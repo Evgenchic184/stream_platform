@@ -20,7 +20,7 @@
         }
     </style>
 </head>
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script src="./utils/hls.js"></script>
 <body>
 	<video controls autoplay width="100%" height="100%" id="video"></video>
 
@@ -36,7 +36,7 @@
         }     
 	setInterval(function() {
     location.reload();
-}, 600000);
+}, {{time_to_reload}});
     </script>
 </body>
 </html>

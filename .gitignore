@@ -1,3 +1,6 @@
 videos/*
 /**/_*
+/**/*.swp
 static/*
+history
+log.txt
