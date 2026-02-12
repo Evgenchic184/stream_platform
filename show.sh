@@ -1,5 +1,6 @@
 echo $1 
 echo `pwd`
+rm ./static/*.{m3u8,ts,vtt}
 ffmpeg -re -i "$1" \
        	-map 0:a:m:language:eng -map 0:v \
        	-c:v libx264 -preset fast -b:v 3000k -maxrate 3000k -bufsize 6000k -c:a aac -b:a 128k \
