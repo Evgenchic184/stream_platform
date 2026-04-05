@@ -1,7 +1,7 @@
 App that allow u stream some kind of series or movies.
 
 How to use?
-
+Install ffmpeg: `sudo apt install ffmpeg`
 Create file "history"
 Put there path to ur first series u wanna to watch.
 

@@ -9,12 +9,14 @@ def show_season(last_series: str):
     current_index = (list_dir.index(basename))
     for i in range(current_index, len(list_dir)):
         path_to_series = os.path.join(dirname, list_dir[i])
+        if os.path.isdir(path_to_series):
+            continue
         video_duration = float(subprocess.check_output(f"ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1".split() + [path_to_series]).decode())
         string_to_history = f"{path_to_series}:{time.time()}:{video_duration}"
         with open("history", "w") as f:
             print(string_to_history, file=f)
         print(string_to_history)
-        #time.sleep(0.1)
+#        time.sleep(0.1)
         subprocess.run(["bash", "show.sh", path_to_series, "&>", "/dev/null"])
 
 
