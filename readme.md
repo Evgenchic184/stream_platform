@@ -11,3 +11,6 @@ ex:
 Run next commands:
 
 `python main.py & python run_series.py`
+sudo docker run --volume /home/evgenchic174/python_scripts/stream_platform/videos/:/app/videos -p 5000:5000 stream_platform
+sudo docker run --volume "`pwd`/videos/:/app/videos" -p 5000:5000 stream_platform
+sudo docker run --volume /home/evgenchic174/python_scripts/stream_platform/videos/:/app/videos --volume /home/evgenchic174/python_scripts/stream_platform/history:/app/history -p 5000:5000 stream_platform

@@ -1,0 +1,12 @@
+/**/__pycache__
+.git/
+venv/
+tests/
+.pytest_cache/
+videos/
+.gitlab-ci.yml
+.gitignore
+README.md
+Dockerfile
+.dockerignore
+docker-compose.yml
