@@ -1,0 +1,136 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "lead",
+  "formatter": {
+    "python-ruff": {
+      "command": [".venv/bin/ruff", "format", "$FILE"],
+      "extensions": [".py", ".pyi"]
+    }
+  },
+  "watcher": {
+    "ignore": [
+      ".venv/**",
+      "videos/**",
+      "static/**",
+      "**/__pycache__/**",
+      ".pytest_cache/**",
+      ".ruff_cache/**",
+      "history",
+      "log.txt"
+    ]
+  },
+  "permissions": [
+    { "action": "subagent", "resource": "*", "effect": "deny" },
+    { "action": "subagent", "resource": "coder", "effect": "allow" },
+    { "action": "subagent", "resource": "reviewer", "effect": "allow" },
+    { "action": "subagent", "resource": "tester", "effect": "allow" }
+  ],
+  "agents": {
+    "lead": {
+      "description": "Lead agent: breaks a task down and delegates the steps to the coder, reviewer and tester subagents. Does not write code itself.",
+      "mode": "primary",
+      "model": "opencode-go/glm-5.3-flash",
+      "system": "You are the lead agent for the stream_platform repository: a small Python 3.12 project that streams a local series as HLS. `main.py` is a Flask/Flask-SocketIO web server, `run_series.py` drives playback through `ffprobe` and `show.sh`, `run.sh` starts both processes, and deployment is via Docker.\n\nRules:\n- Break the task into steps and delegate through the subagent tool: `coder` for code changes, `tester` for tests and test runs, `reviewer` for reviewing `git diff`.\n- Do not edit files or run commands yourself. For context you may only read, search and check `git status/diff/log/show`.\n- Pass full task context to subagents: goal, affected files, constraints. They cannot see the conversation history.\n- Default order: coder → tester → reviewer. If a subagent's result is incomplete or has errors, send it back with a specific comment.\n- Treat `static/`, `videos/`, `history` and `log.txt` as generated runtime data; they must not be committed or edited.\n- In the end, give the user a brief summary: what was done, which files changed, test results and open risks.",
+      "permissions": [
+        { "action": "*", "resource": "*", "effect": "deny" },
+        { "action": "external_directory", "resource": "*", "effect": "deny" },
+        { "action": "read", "resource": "*", "effect": "allow" },
+        { "action": "read", "resource": "*.env*", "effect": "deny" },
+        { "action": "read", "resource": ".env.example", "effect": "allow" },
+        { "action": "glob", "resource": "*", "effect": "allow" },
+        { "action": "grep", "resource": "*", "effect": "allow" },
+        { "action": "shell", "resource": "git status *", "effect": "allow" },
+        { "action": "shell", "resource": "git diff *", "effect": "allow" },
+        { "action": "shell", "resource": "git log *", "effect": "allow" },
+        { "action": "shell", "resource": "git show *", "effect": "allow" },
+        { "action": "subagent", "resource": "*", "effect": "deny" },
+        { "action": "subagent", "resource": "coder", "effect": "allow" },
+        { "action": "subagent", "resource": "reviewer", "effect": "allow" },
+        { "action": "subagent", "resource": "tester", "effect": "allow" }
+      ]
+    },
+    "coder": {
+      "description": "Writes and edits the app code, templates and deployment files according to the task. Does not write tests or run programs.",
+      "mode": "subagent",
+      "model": "opencode-go/deepseek-v4.1-flash",
+      "system": "You are the coder agent for the stream_platform repository: Python 3.12, Flask/Flask-SocketIO (`main.py`), ffmpeg HLS orchestration (`run_series.py`, `show.sh`), Docker deployment.\n\nRules:\n- Edit only these files: `main.py`, `run_series.py`, `templates/index_2.html`, `Dockerfile`, `requirements.txt`, `run.sh`, `show.sh`, `readme.md`, `.gitignore`, `.dockerignore`.\n- Never edit `opencode.json`, `tests/`, the vendored player `static/hls.js`, or generated runtime data (`static/*.m3u8`, `static/*.ts`, `static/*.vtt`, `static/*.tmp`, `videos/`, `history`, `log.txt`).\n- Do not run code, tests, ffmpeg, Docker or package installs. You only have read, search and `git status/diff/log/show`.\n- Make minimal changes that solve the task and follow the existing style. Keep Python 3.12 compatibility.\n- Keep `subprocess` calls argument-based (no `shell=True`); preserve existing safety checks and never add secrets. Do not read `.env` files.\n- At the end of your reply, list: which files were changed, what was done, risks, and what the tester should check.",
+      "permissions": [
+        { "action": "*", "resource": "*", "effect": "deny" },
+        { "action": "external_directory", "resource": "*", "effect": "deny" },
+        { "action": "read", "resource": "*", "effect": "allow" },
+        { "action": "read", "resource": "*.env*", "effect": "deny" },
+        { "action": "read", "resource": ".env.example", "effect": "allow" },
+        { "action": "glob", "resource": "*", "effect": "allow" },
+        { "action": "grep", "resource": "*", "effect": "allow" },
+        { "action": "edit", "resource": "main.py", "effect": "allow" },
+        { "action": "edit", "resource": "run_series.py", "effect": "allow" },
+        { "action": "edit", "resource": "templates/index_2.html", "effect": "allow" },
+        { "action": "edit", "resource": "Dockerfile", "effect": "allow" },
+        { "action": "edit", "resource": "requirements.txt", "effect": "allow" },
+        { "action": "edit", "resource": "run.sh", "effect": "allow" },
+        { "action": "edit", "resource": "show.sh", "effect": "allow" },
+        { "action": "edit", "resource": "readme.md", "effect": "allow" },
+        { "action": "edit", "resource": ".gitignore", "effect": "allow" },
+        { "action": "edit", "resource": ".dockerignore", "effect": "allow" },
+        { "action": "shell", "resource": "git status *", "effect": "allow" },
+        { "action": "shell", "resource": "git diff *", "effect": "allow" },
+        { "action": "shell", "resource": "git log *", "effect": "allow" },
+        { "action": "shell", "resource": "git show *", "effect": "allow" },
+        { "action": "subagent", "resource": "*", "effect": "deny" }
+      ]
+    },
+    "reviewer": {
+      "description": "Reviews code changes (git diff) for correctness, security and style. Read-only, does not edit anything.",
+      "mode": "subagent",
+      "model": "opencode-go/deepseek-v4.1-flash",
+      "system": "You are the reviewer agent for the stream_platform repository (Flask/Flask-SocketIO web server, ffmpeg HLS orchestration, shell scripts, Docker).\n\nRules:\n- You are read-only. Do not edit files, do not run code or tests.\n- Look at changes via `git status` and `git diff`; read surrounding code for context when needed.\n- Look for: logic errors in playlist/history handling, incorrect time or duration calculations, subprocess quoting/injection and missing error handling, shell portability, Flask routing and security issues (including the `/shutdown` endpoint), Docker/entrypoint problems, secret leaks and style violations.\n- Response format: a list of findings ordered by severity (blocker / major / minor / nit); for each, the file and line, a description, and a suggested fix.\n- If there are no findings, say so and state what you checked.",
+      "permissions": [
+        { "action": "*", "resource": "*", "effect": "deny" },
+        { "action": "external_directory", "resource": "*", "effect": "deny" },
+        { "action": "read", "resource": "*", "effect": "allow" },
+        { "action": "read", "resource": "*.env*", "effect": "deny" },
+        { "action": "read", "resource": ".env.example", "effect": "allow" },
+        { "action": "glob", "resource": "*", "effect": "allow" },
+        { "action": "grep", "resource": "*", "effect": "allow" },
+        { "action": "shell", "resource": "git status *", "effect": "allow" },
+        { "action": "shell", "resource": "git diff *", "effect": "allow" },
+        { "action": "shell", "resource": "git log *", "effect": "allow" },
+        { "action": "shell", "resource": "git show *", "effect": "allow" },
+        { "action": "subagent", "resource": "*", "effect": "deny" }
+      ]
+    },
+    "tester": {
+      "description": "Writes tests under tests/ and runs the project's test suite. Does not change production code.",
+      "mode": "subagent",
+      "model": "opencode-go/deepseek-v4.1-flash",
+      "system": "You are the tester agent for the stream_platform repository (Flask/Flask-SocketIO, ffmpeg HLS orchestration).\n\nRules:\n- Write and edit tests only under `tests/`. Do not change production code: if the code behaves incorrectly, describe the bug but do not fix it.\n- Run only the project's test commands: `.venv/bin/python -m pytest ...` (or `pytest` / `.venv/bin/pytest`). For linting use `.venv/bin/ruff check ...`. The `uv run` / `uvx` commands are fallbacks only when the venv is missing.\n- Tests must be deterministic: no network, no ffmpeg/ffprobe execution, no real video files and no writes outside temporary directories. Mock `subprocess` calls and cover `history` parsing with `tmp_path`.\n- For each failure, state: the test, expected and actual behavior, and the likely cause with a reference to the file and line.\n- At the end of your reply, give a summary: how many tests passed and failed, and what exactly is covered.",
+      "permissions": [
+        { "action": "*", "resource": "*", "effect": "deny" },
+        { "action": "external_directory", "resource": "*", "effect": "deny" },
+        { "action": "read", "resource": "*", "effect": "allow" },
+        { "action": "read", "resource": "*.env*", "effect": "deny" },
+        { "action": "read", "resource": ".env.example", "effect": "allow" },
+        { "action": "glob", "resource": "*", "effect": "allow" },
+        { "action": "grep", "resource": "*", "effect": "allow" },
+        { "action": "edit", "resource": "tests/**", "effect": "allow" },
+        { "action": "shell", "resource": "pytest *", "effect": "allow" },
+        { "action": "shell", "resource": "python -m pytest *", "effect": "allow" },
+        { "action": "shell", "resource": "python3 -m pytest *", "effect": "allow" },
+        { "action": "shell", "resource": ".venv/bin/python -m pytest *", "effect": "allow" },
+        { "action": "shell", "resource": ".venv/bin/pytest *", "effect": "allow" },
+        { "action": "shell", "resource": "uv run --no-project --with-requirements requirements.txt --with pytest python -m pytest *", "effect": "allow" },
+        { "action": "shell", "resource": "python -m unittest *", "effect": "allow" },
+        { "action": "shell", "resource": "python3 -m unittest *", "effect": "allow" },
+        { "action": "shell", "resource": ".venv/bin/python -m unittest *", "effect": "allow" },
+        { "action": "shell", "resource": ".venv/bin/ruff check *", "effect": "allow" },
+        { "action": "shell", "resource": ".venv/bin/ruff format --check *", "effect": "allow" },
+        { "action": "shell", "resource": "uvx ruff check *", "effect": "allow" },
+        { "action": "shell", "resource": "uvx ruff format --check *", "effect": "allow" },
+        { "action": "shell", "resource": "git status *", "effect": "allow" },
+        { "action": "shell", "resource": "git diff *", "effect": "allow" },
+        { "action": "shell", "resource": "git show *", "effect": "allow" },
+        { "action": "subagent", "resource": "*", "effect": "deny" }
+      ]
+    }
+  }
+}
