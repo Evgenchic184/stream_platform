@@ -5,8 +5,36 @@ from flask import Flask, render_template
 from flask_socketio import SocketIO
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+
+def normalize_prefix(value: str) -> str:
+    """Return a WSGI-style prefix such as ``/stream`` or an empty string."""
+    value = value.strip().strip("/")
+    return f"/{value}" if value else ""
+
+
+class PrefixMiddleware:
+    """Set SCRIPT_NAME and strip the prefix if the proxy did not strip it."""
+
+    def __init__(self, wsgi_app, prefix: str):
+        self.wsgi_app = wsgi_app
+        self.prefix = prefix
+
+    def __call__(self, environ, start_response):
+        if self.prefix:
+            path = environ.get("PATH_INFO", "")
+            if path == self.prefix or path.startswith(f"{self.prefix}/"):
+                environ["PATH_INFO"] = path[len(self.prefix) :] or "/"
+            environ["SCRIPT_NAME"] = self.prefix
+        return self.wsgi_app(environ, start_response)
+
+
+URL_PREFIX = normalize_prefix(os.environ.get("URL_PREFIX", ""))
+
 app = Flask(__name__)
+app.config["APPLICATION_ROOT"] = URL_PREFIX or "/"
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+if URL_PREFIX:
+    app.wsgi_app = PrefixMiddleware(app.wsgi_app, URL_PREFIX)
 socketio = SocketIO(app)
 
 

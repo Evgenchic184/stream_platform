@@ -5,6 +5,8 @@ services:
     image: stream_platform
     ports:
       - 127.0.0.1:35040:5000
+    environment:
+      - URL_PREFIX=/stream
     volumes:
       - "/root/Downloads/Futurama:/app/videos"
       - ./history:/app/history
